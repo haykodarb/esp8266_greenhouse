@@ -7,6 +7,17 @@ HTTPClient https;
 WiFiClientSecure client;
 ESP8266WiFiMulti WiFiMulti;
 
+#ifndef STASSID
+#define STASSID "aram"
+#define STAPSK  "darbinyan"
+#endif
+
+#define SERIEID  "qINofq6L"
+#define HOSTURL "kassen.now.sh"
+#define LINKURL "/api/insert"
+#define HTTPPORT 443
+#define PERTIEMPO 30000
+
 //Arduino JSON
 #include <ArduinoJson.h>
 StaticJsonDocument<200> data;
@@ -18,21 +29,20 @@ StaticJsonDocument<200> data;
 #define DHTTYPE    DHT11 
 DHT dht(DHTPIN, DHTTYPE);
 
-// Datos web
-const int serie = 1;
-const String host = "kassen.now.sh";
-const String url = "/insert";
-
-const char* ssid = "aram";
-const char* password = "";
+// Constantes del sistema
+const char* serie = SERIEID;
+const String host = HOSTURL;
+const String url = LINKURL;
+const char* ssid = STASSID;
+const char* password = STAPSK;
+int periodo = PERTIEMPO;
+int httpsPort = HTTPPORT;
 
 
 //Variables
 float temp;
 float hum;
 int lum;
-int periodo = 300000;
-int httpsPort = 443;
 unsigned long timeNow = 0;
 
 
@@ -85,7 +95,4 @@ void sendPost(){
   Serial.println(resCode);
   Serial.print("Recieved response: ");
   Serial.println(https.getString());
-  if (resCode == -1) {
-  ESP.reset();
-  }
  }
