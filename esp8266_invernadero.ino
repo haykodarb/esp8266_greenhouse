@@ -16,7 +16,7 @@ ESP8266WiFiMulti WiFiMulti;
 #define HOSTURL "kassen.now.sh"
 #define LINKURL "/api/insert"
 #define HTTPPORT 443
-#define PERTIEMPO 30000
+#define PERTIEMPO 900000
 
 //Arduino JSON
 #include <ArduinoJson.h>
