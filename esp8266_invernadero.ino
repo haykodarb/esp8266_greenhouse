@@ -2,9 +2,9 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include <DNSServer.h>
-#include <ESP8266WebServer.h>         //https://github.com/tzapu/WiFiManage
+#include <ESP8266WebServer.h> //https://github.com/tzapu/WiFiManage
 #include <WiFiClientSecure.h>
-#include <WiFiManager.h> 
+#include <WiFiManager.h>
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
 #include <ArduinoJson.h>
@@ -14,14 +14,14 @@ WiFiClientSecure client;
 WiFiManager wifiManager;
 
 bool shouldSaveConfig = false;
-const char* serie;
+const char *serie;
 
 //Arduino JSON
 StaticJsonDocument<200> data;
 
-//Configuracion del dht11 
-#define DHTPIN D3 
-#define DHTTYPE    DHT11 
+//Configuracion del dht11
+#define DHTPIN D3
+#define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
 // Constantes del sistema
@@ -36,37 +36,41 @@ float hum;
 int lum;
 unsigned long timeNow = 0;
 
-
-void setup(){
-Serial.begin(115200);
-readConfig();
-startWifi();
-writeConfig();
-Serial.printf("Empezando programa...");
-delay(1000);
-dht.begin(); 
-client.setInsecure();
+void setup()
+{
+  Serial.begin(115200);
+  readConfig();
+  startWifi();
+  writeConfig();
+  Serial.printf("Empezando programa...");
+  delay(1000);
+  dht.begin();
+  client.setInsecure();
 }
 
-
-void loop() {
-Serial.println("--------------");
-timeNow = millis(); 
-https.begin(client, host, 443, url, true);
-readSensor();
-sendPost();
-while( millis() < timeNow + periodo){
-  yield();  }
+void loop()
+{
+  Serial.println("--------------");
+  timeNow = millis();
+  https.begin(client, host, 443, url, true);
+  readSensor();
+  sendPost();
+  while (millis() < timeNow + periodo)
+  {
+    yield();
+  }
 }
 
-void readSensor() {
+void readSensor()
+{
   temp = dht.readTemperature();
   hum = dht.readHumidity();
-  int sensorValue = analogRead(A0);   // read the input on analog pin 0
+  int sensorValue = analogRead(A0); // read the input on analog pin 0
   lum = map(sensorValue, 0, 1024, 0, 100);
 }
 
-void sendPost(){ 
+void sendPost()
+{
   String jsonOutput;
   data["temp"] = temp;
   data["serie"] = serie;
@@ -81,14 +85,16 @@ void sendPost(){
   Serial.println(resCode);
   Serial.print("Recieved response: ");
   Serial.println(https.getString());
- }
+}
 
-void saveConfigCallback () {
+void saveConfigCallback()
+{
   Serial.println("Should save config");
   shouldSaveConfig = true;
 }
 
-void readConfig() {
+void readConfig()
+{
   SPIFFS.begin();
   File configFile = SPIFFS.open("/config.json", "r");
   size_t size = configFile.size();
@@ -102,8 +108,10 @@ void readConfig() {
   configFile.close();
 }
 
-void writeConfig() {
-  if (shouldSaveConfig) {
+void writeConfig()
+{
+  if (shouldSaveConfig)
+  {
     Serial.println("saving config");
     StaticJsonDocument<200> doc;
     doc["serie"] = serie;
@@ -113,11 +121,12 @@ void writeConfig() {
   }
 }
 
-void startWifi() {
+void startWifi()
+{
   WiFiManagerParameter serie_id("Serie", "serie", serie, 40);
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.addParameter(&serie_id);
   wifiManager.autoConnect("Invernadero", "kassen123");
-  Serial.println("connected...yeey :) uwu >.>");
+  Serial.println("connected..(✿ ♡‿♡) yeey UwU >.>");
   serie = serie_id.getValue();
-  }
+}
