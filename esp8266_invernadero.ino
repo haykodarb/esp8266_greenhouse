@@ -14,10 +14,10 @@ WiFiClientSecure client;
 WiFiManager wifiManager;
 
 bool shouldSaveConfig = false;
-const char *serie;
+String serie = "default";
 
 //Arduino JSON
-StaticJsonDocument<200> data;
+
 
 //Configuracion del dht11
 #define DHTPIN D3
@@ -39,10 +39,12 @@ unsigned long timeNow = 0;
 void setup()
 {
   Serial.begin(115200);
-  readConfig();
-  startWifi();
-  writeConfig();
   Serial.printf("Empezando programa...");
+  SPIFFS.begin();
+  startWifi();
+  if (shouldSaveConfig){
+    writeConfig(); }
+  readConfig();
   delay(1000);
   dht.begin();
   client.setInsecure();
@@ -52,7 +54,7 @@ void loop()
 {
   Serial.println("--------------");
   timeNow = millis();
-  https.begin(client, host, 443, url, true);
+  https.begin(client, host, httpsPort, url, true);
   readSensor();
   sendPost();
   while (millis() < timeNow + periodo)
@@ -71,6 +73,7 @@ void readSensor()
 
 void sendPost()
 {
+  StaticJsonDocument<200> data;
   String jsonOutput;
   data["temp"] = temp;
   data["serie"] = serie;
@@ -89,44 +92,38 @@ void sendPost()
 
 void saveConfigCallback()
 {
-  Serial.println("Should save config");
   shouldSaveConfig = true;
 }
 
 void readConfig()
 {
-  SPIFFS.begin();
   File configFile = SPIFFS.open("/config.json", "r");
   size_t size = configFile.size();
   std::unique_ptr<char[]> buf(new char[size]);
   configFile.readBytes(buf.get(), size);
   StaticJsonDocument<200> doc;
   auto error = deserializeJson(doc, buf.get());
-  serie = doc["serie"];
+  serie = (const char*)doc["serie"];
   Serial.print("Serie es igual a ");
   Serial.println(serie);
   configFile.close();
 }
 
 void writeConfig()
-{
-  if (shouldSaveConfig)
-  {
-    Serial.println("saving config");
+{   Serial.println("saving config");
     StaticJsonDocument<200> doc;
     doc["serie"] = serie;
     File configFile = SPIFFS.open("/config.json", "w");
     serializeJson(doc, configFile);
     configFile.close();
-  }
 }
 
 void startWifi()
 {
-  WiFiManagerParameter serie_id("Serie", "serie", serie, 40);
+  WiFiManagerParameter serie_id("Serie", "serie", "", 10);
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.addParameter(&serie_id);
   wifiManager.autoConnect("Invernadero", "kassen123");
-  Serial.println("connected..(✿ ♡‿♡) yeey UwU >.>");
+  Serial.println("connected..(✿ ♡‿♡) yeey UwU >.<");
   serie = serie_id.getValue();
 }
