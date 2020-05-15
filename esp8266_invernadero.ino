@@ -1,43 +1,34 @@
+#include <FS.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266WiFiMulti.h>
 #include <ESP8266HTTPClient.h>
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>         //https://github.com/tzapu/WiFiManage
 #include <WiFiClientSecure.h>
-const uint8_t fingerprint[20] = {0xd2, 0xb8, 0xf1, 0x80, 0xac, 0x29, 0x63, 0xf8, 0x22, 0xaa, 0x9e, 0x99, 0x4d, 0x73, 0x7b, 0x59, 0x3b, 0x92, 0xb4, 0xe8};
+#include <WiFiManager.h> 
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <ArduinoJson.h>
+
 HTTPClient https;
 WiFiClientSecure client;
-ESP8266WiFiMulti WiFiMulti;
+WiFiManager wifiManager;
 
-#ifndef STASSID
-#define STASSID "aram"
-#define STAPSK  "darbinyan"
-#endif
-
-#define SERIEID  "qINofq6L"
-#define HOSTURL "kassen.now.sh"
-#define LINKURL "/api/insert"
-#define HTTPPORT 443
-#define PERTIEMPO 900000
+bool shouldSaveConfig = false;
+const char* serie;
 
 //Arduino JSON
-#include <ArduinoJson.h>
 StaticJsonDocument<200> data;
 
 //Configuracion del dht11 
-#include <Adafruit_Sensor.h>
-#include <DHT.h>
 #define DHTPIN D3 
 #define DHTTYPE    DHT11 
 DHT dht(DHTPIN, DHTTYPE);
 
 // Constantes del sistema
-const char* serie = SERIEID;
-const String host = HOSTURL;
-const String url = LINKURL;
-const char* ssid = STASSID;
-const char* password = STAPSK;
-int periodo = PERTIEMPO;
-int httpsPort = HTTPPORT;
-
+const String host = "kassen.now.sh";
+const String url = "/api/insert";
+int periodo = 900000;
+int httpsPort = 443;
 
 //Variables
 float temp;
@@ -46,18 +37,13 @@ int lum;
 unsigned long timeNow = 0;
 
 
-
 void setup(){
 Serial.begin(115200);
+readConfig();
+startWifi();
+writeConfig();
 Serial.printf("Empezando programa...");
 delay(1000);
-WiFi.mode(WIFI_STA);
-WiFi.setSleepMode(WIFI_NONE_SLEEP);
-WiFiMulti.addAP(ssid, password);
-while (WiFiMulti.run() != WL_CONNECTED) {
-  yield();
-  }
-Serial.println();
 dht.begin(); 
 client.setInsecure();
 }
@@ -96,3 +82,42 @@ void sendPost(){
   Serial.print("Recieved response: ");
   Serial.println(https.getString());
  }
+
+void saveConfigCallback () {
+  Serial.println("Should save config");
+  shouldSaveConfig = true;
+}
+
+void readConfig() {
+  SPIFFS.begin();
+  File configFile = SPIFFS.open("/config.json", "r");
+  size_t size = configFile.size();
+  std::unique_ptr<char[]> buf(new char[size]);
+  configFile.readBytes(buf.get(), size);
+  StaticJsonDocument<200> doc;
+  auto error = deserializeJson(doc, buf.get());
+  serie = doc["serie"];
+  Serial.print("Serie es igual a ");
+  Serial.println(serie);
+  configFile.close();
+}
+
+void writeConfig() {
+  if (shouldSaveConfig) {
+    Serial.println("saving config");
+    StaticJsonDocument<200> doc;
+    doc["serie"] = serie;
+    File configFile = SPIFFS.open("/config.json", "w");
+    serializeJson(doc, configFile);
+    configFile.close();
+  }
+}
+
+void startWifi() {
+  WiFiManagerParameter serie_id("Serie", "serie", serie, 40);
+  wifiManager.setSaveConfigCallback(saveConfigCallback);
+  wifiManager.addParameter(&serie_id);
+  wifiManager.autoConnect("Invernadero", "kassen123");
+  Serial.println("connected...yeey :) uwu >.>");
+  serie = serie_id.getValue();
+  }
