@@ -20,12 +20,12 @@ String serie = "default";
 
 
 //Configuracion del dht11
-#define DHTPIN D3
+#define DHTPIN D6
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
 // Constantes del sistema
-const String host = "kassen.now.sh";
+const String host = "kassen.herokuapp.com";
 const String url = "/api/insert";
 int periodo = 900000;
 int httpsPort = 443;
@@ -40,6 +40,8 @@ void setup()
 {
   Serial.begin(115200);
   Serial.printf("Empezando programa...");
+  pinMode(D0, WAKEUP_PULLUP);
+  pinMode(D2, OUTPUT);
   SPIFFS.begin();
   startWifi();
   if (shouldSaveConfig){
@@ -57,7 +59,9 @@ void loop()
   https.begin(client, host, httpsPort, url, true);
   readSensor();
   sendPost();
-  while (millis() < timeNow + periodo)
+  Serial.println("Sleep por 15 minutos");
+  ESP.deepSleep(900000000);
+  while (millis() < timeNow + 5000)
   {
     yield();
   }
@@ -65,10 +69,12 @@ void loop()
 
 void readSensor()
 {
+  digitalWrite(D4, HIGH);
   temp = dht.readTemperature();
   hum = dht.readHumidity();
   int sensorValue = analogRead(A0); // read the input on analog pin 0
   lum = map(sensorValue, 0, 1024, 0, 100);
+  digitalWrite(D4, LOW);
 }
 
 void sendPost()
@@ -114,7 +120,7 @@ void writeConfig()
     StaticJsonDocument<200> doc;
     doc["serie"] = serie;
     File configFile = SPIFFS.open("/config.json", "w");
-    serializeJson(doc, configFile);
+    serializeJson(doc, configFile); 
     configFile.close();
 }
 
@@ -123,7 +129,12 @@ void startWifi()
   WiFiManagerParameter serie_id("Serie", "serie", "", 10);
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.addParameter(&serie_id);
-  wifiManager.autoConnect("Invernadero", "kassen123");
+  wifiManager.setConfigPortalTimeout(60);
+  if(!wifiManager.autoConnect("Invernadero", "kassen123")){
+    delay(10000);
+    Serial.println("Sleep por 15 minutos");
+    ESP.deepSleep(900000000);  
+  }
   Serial.println("connected..(✿ ♡‿♡) yeey UwU >.<");
   serie = serie_id.getValue();
 }
